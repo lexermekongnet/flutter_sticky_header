@@ -15,8 +15,10 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
     RenderSliver? child,
     bool overlapsContent = false,
     bool sticky = true,
+    bool reverse = false,
     StickyHeaderController? controller,
   })  : _overlapsContent = overlapsContent,
+        _reverse = reverse,
         _sticky = sticky,
         _controller = controller {
     this.header = header as RenderBox?;
@@ -29,10 +31,19 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
 
   bool get overlapsContent => _overlapsContent;
   bool _overlapsContent;
+  bool _reverse;
 
   set overlapsContent(bool value) {
     if (_overlapsContent == value) return;
     _overlapsContent = value;
+    markNeedsLayout();
+  }
+
+  bool get reverse => _reverse;
+
+  set reverse(bool value) {
+    if (_reverse == value) return;
+    _reverse = value;
     markNeedsLayout();
   }
 
@@ -287,7 +298,10 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
               0.0, geometry!.paintExtent - headerPosition - _headerExtent!);
           break;
         case AxisDirection.down:
-          headerParentData!.paintOffset = Offset(0.0, headerPosition);
+          headerParentData!.paintOffset = _reverse
+              ? Offset(
+                  0.0, geometry!.paintExtent - headerPosition - _headerExtent!)
+              : Offset(0.0, headerPosition);
           break;
         case AxisDirection.left:
           headerParentData!.paintOffset = Offset(
@@ -370,17 +384,26 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (geometry!.visible) {
+    if (!geometry!.visible) return;
+
+    if (_reverse) {
+      // Paint header first, then child
+      if (header != null) {
+        final headerParentData = header!.parentData as SliverPhysicalParentData;
+        context.paintChild(header!, offset + headerParentData.paintOffset);
+      }
       if (child != null && child!.geometry!.visible) {
-        final SliverPhysicalParentData childParentData =
-            child!.parentData as SliverPhysicalParentData;
+        final childParentData = child!.parentData as SliverPhysicalParentData;
         context.paintChild(child!, offset + childParentData.paintOffset);
       }
-
-      // The header must be drawn over the sliver.
+    } else {
+      // Normal paint order: child first, then header
+      if (child != null && child!.geometry!.visible) {
+        final childParentData = child!.parentData as SliverPhysicalParentData;
+        context.paintChild(child!, offset + childParentData.paintOffset);
+      }
       if (header != null) {
-        final SliverPhysicalParentData headerParentData =
-            header!.parentData as SliverPhysicalParentData;
+        final headerParentData = header!.parentData as SliverPhysicalParentData;
         context.paintChild(header!, offset + headerParentData.paintOffset);
       }
     }

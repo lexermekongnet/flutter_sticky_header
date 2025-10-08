@@ -155,6 +155,7 @@ class SliverStickyHeader extends RenderObjectWidget {
     this.overlapsContent = false,
     this.sticky = true,
     this.controller,
+    this.reverse = false,
   }) : super(key: key);
 
   /// Creates a widget that builds the header of a [SliverStickyHeader]
@@ -183,6 +184,9 @@ class SliverStickyHeader extends RenderObjectWidget {
           controller: controller,
         );
 
+  /// Whether the scroll view scrolls in the reading direction.
+  final bool reverse;
+
   /// The header to display before the sliver.
   final Widget? header;
 
@@ -209,6 +213,7 @@ class SliverStickyHeader extends RenderObjectWidget {
       overlapsContent: overlapsContent,
       sticky: sticky,
       controller: controller ?? DefaultStickyHeaderController.of(context),
+      reverse: reverse,
     );
   }
 
