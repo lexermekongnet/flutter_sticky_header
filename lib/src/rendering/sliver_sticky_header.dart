@@ -152,10 +152,10 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
       return;
     }
 
-    // One of them is not null.
     AxisDirection axisDirection = applyGrowthDirectionToAxisDirection(
         constraints.axisDirection, constraints.growthDirection);
 
+    // Layout header
     if (header != null) {
       header!.layout(
         BoxValueConstraints<SliverStickyHeaderState>(
@@ -167,23 +167,14 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
       _headerExtent = computeHeaderExtent();
     }
 
-    // Compute the header extent only one time.
-    double headerExtent = headerLogicalExtent!;
+    final double headerExtent = headerLogicalExtent!;
     final double headerPaintExtent =
         calculatePaintOffset(constraints, from: 0.0, to: headerExtent);
     final double headerCacheExtent =
         calculateCacheOffset(constraints, from: 0.0, to: headerExtent);
 
-    if (child == null) {
-      geometry = SliverGeometry(
-          scrollExtent: headerExtent,
-          maxPaintExtent: headerExtent,
-          paintExtent: headerPaintExtent,
-          cacheExtent: headerCacheExtent,
-          hitTestExtent: headerPaintExtent,
-          hasVisualOverflow: headerExtent > constraints.remainingPaintExtent ||
-              constraints.scrollOffset > 0.0);
-    } else {
+    // Layout child
+    if (child != null) {
       child!.layout(
         constraints.copyWith(
           scrollOffset: math.max(0.0, constraints.scrollOffset - headerExtent),
@@ -197,6 +188,7 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
         ),
         parentUsesSize: true,
       );
+
       final SliverGeometry childLayoutGeometry = child!.geometry!;
       if (childLayoutGeometry.scrollOffsetCorrection != null) {
         geometry = SliverGeometry(
@@ -228,39 +220,49 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
         hasVisualOverflow: childLayoutGeometry.hasVisualOverflow,
       );
 
-      final SliverPhysicalParentData? childParentData =
-          child!.parentData as SliverPhysicalParentData?;
+      final SliverPhysicalParentData childParentData =
+          child!.parentData as SliverPhysicalParentData;
+
       switch (axisDirection) {
         case AxisDirection.up:
-          childParentData!.paintOffset = _reverse
+          childParentData.paintOffset = _reverse
               ? Offset(
                   0.0,
                   calculatePaintOffset(constraints,
                       from: 0.0, to: headerExtent))
               : Offset.zero;
           break;
-        case AxisDirection.right:
-          childParentData!.paintOffset = Offset(
-              calculatePaintOffset(constraints, from: 0.0, to: headerExtent),
-              0.0);
-          break;
         case AxisDirection.down:
-          childParentData!.paintOffset = _reverse
-              ? Offset.zero // sliver *before* header
+          childParentData.paintOffset = _reverse
+              ? Offset.zero
               : Offset(
                   0.0,
                   calculatePaintOffset(constraints,
                       from: 0.0, to: headerExtent));
           break;
         case AxisDirection.left:
-          childParentData!.paintOffset = Offset.zero;
+          childParentData.paintOffset = _reverse
+              ? Offset(
+                  calculatePaintOffset(constraints,
+                      from: 0.0, to: headerExtent),
+                  0.0)
+              : Offset.zero;
+          break;
+        case AxisDirection.right:
+          childParentData.paintOffset = _reverse
+              ? Offset.zero
+              : Offset(
+                  calculatePaintOffset(constraints,
+                      from: 0.0, to: headerExtent),
+                  0.0);
           break;
       }
     }
 
+    // Layout header paint offset
     if (header != null) {
-      final SliverPhysicalParentData? headerParentData =
-          header!.parentData as SliverPhysicalParentData?;
+      final SliverPhysicalParentData headerParentData =
+          header!.parentData as SliverPhysicalParentData;
       final double childScrollExtent = child?.geometry?.scrollExtent ?? 0.0;
       final double headerPosition = sticky
           ? math.min(
@@ -275,18 +277,12 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
               constraints.remainingPaintExtent ==
                   constraints.viewportMainAxisExtent);
 
+      // Update header layout builder if needed
       final double headerScrollRatio =
           ((headerPosition - constraints.overlap).abs() / _headerExtent!);
-      if (_isPinned && headerScrollRatio <= 1) {
-        controller?.stickyHeaderScrollOffset =
-            constraints.precedingScrollExtent;
-      }
-      // second layout if scroll percentage changed and header is a
-      // RenderStickyHeaderLayoutBuilder.
       if (header is RenderConstrainedLayoutBuilder<
           BoxValueConstraints<SliverStickyHeaderState>, RenderBox>) {
         double headerScrollRatioClamped = headerScrollRatio.clamp(0.0, 1.0);
-
         SliverStickyHeaderState state =
             SliverStickyHeaderState(headerScrollRatioClamped, _isPinned);
         if (_oldState != state) {
@@ -301,23 +297,31 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
         }
       }
 
+      // Header paint offset switch
       switch (axisDirection) {
         case AxisDirection.up:
-          headerParentData!.paintOffset = Offset(
-              0.0, geometry!.paintExtent - headerPosition - _headerExtent!);
+          headerParentData.paintOffset = _reverse
+              ? Offset(0.0, headerPosition)
+              : Offset(
+                  0.0, geometry!.paintExtent - headerPosition - _headerExtent!);
           break;
         case AxisDirection.down:
-          headerParentData!.paintOffset = _reverse
+          headerParentData.paintOffset = _reverse
               ? Offset(
                   0.0, geometry!.paintExtent - headerPosition - _headerExtent!)
               : Offset(0.0, headerPosition);
           break;
         case AxisDirection.left:
-          headerParentData!.paintOffset = Offset(
-              geometry!.paintExtent - headerPosition - _headerExtent!, 0.0);
+          headerParentData.paintOffset = _reverse
+              ? Offset(headerPosition, 0.0)
+              : Offset(
+                  geometry!.paintExtent - headerPosition - _headerExtent!, 0.0);
           break;
         case AxisDirection.right:
-          headerParentData!.paintOffset = Offset(headerPosition, 0.0);
+          headerParentData.paintOffset = _reverse
+              ? Offset(
+                  geometry!.paintExtent - headerPosition - _headerExtent!, 0.0)
+              : Offset(headerPosition, 0.0);
           break;
       }
     }
@@ -364,14 +368,20 @@ class RenderSliverStickyHeader extends RenderSliver with RenderSliverHelpers {
 
   @override
   double childMainAxisPosition(RenderObject? child) {
-    if (child == header)
+    if (child == header) {
       return _isPinned
           ? 0.0
-          : -(constraints.scrollOffset + constraints.overlap);
-    if (child == this.child)
-      return calculatePaintOffset(constraints,
-          from: 0.0, to: headerLogicalExtent!);
-    return 0;
+          : (_reverse
+              ? -(constraints.scrollOffset + constraints.overlap)
+              : -(constraints.scrollOffset + constraints.overlap));
+    }
+    if (child == this.child) {
+      return _reverse
+          ? 0.0 // child above header
+          : calculatePaintOffset(constraints,
+              from: 0.0, to: headerLogicalExtent!);
+    }
+    return 0.0;
   }
 
   @override
